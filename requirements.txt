@@ -1,3 +1,7 @@
 python-telegram-bot==20.3
 stripe
 python-dotenv
+fastapi
+uvicorn
+requests
+python-dotenv
