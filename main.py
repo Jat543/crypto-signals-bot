@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
-import os, requests
+import os
+import httpx
 
 app = FastAPI()
 
@@ -30,6 +31,7 @@ async def telegram_webhook(request: Request):
             reply = "📩 Gauta žinutė."
 
         # Išsiunčiam atsakymą
-        requests.post(f"{API}/sendMessage", json={"chat_id": chat_id, "text": reply})
+        async with httpx.AsyncClient() as client:
+            await client.post(f"{API}/sendMessage", json={"chat_id": chat_id, "text": reply})
 
     return {"ok": True}
