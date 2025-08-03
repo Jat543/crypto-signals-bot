@@ -7,7 +7,7 @@ app = FastAPI()
 TOKEN = os.getenv("BOT_TOKEN")
 API = f"https://api.telegram.org/bot{TOKEN}"
 
-# Tavo mokėjimo duomenys
+# Mokėjimo duomenys
 REVOLUT_IBAN = "LT093250023819440672"
 TRUST_WALLET = "0xE426ECBa32B0281Ebe0c799512F45E2071a69415"
 
@@ -43,7 +43,7 @@ async def telegram_webhook(request: Request, path: str):
             "💳 *Mokėjimo informacija:*\n\n"
             f"🏦 Revolut IBAN: `{REVOLUT_IBAN}`\n"
             f"👛 Trust Wallet adresas: `{TRUST_WALLET}`\n\n"
-            "_Atlikę mokėjimą, parašykite man patvirtinimui._"
+            "_Atlikę mokėjimą, parašykite mums patvirtinimui._"
         )
 
     else:
@@ -57,6 +57,7 @@ async def telegram_webhook(request: Request, path: str):
     })
 
     return {"ok": True}
+
 
 
 
