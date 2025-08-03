@@ -3,9 +3,11 @@ import os, requests, urllib.parse
 
 app = FastAPI()
 
+# Boto tokenas iš Railway kintamojo
 TOKEN = os.getenv("BOT_TOKEN")
 API = f"https://api.telegram.org/bot{TOKEN}"
 
+# Tavo mokėjimo duomenys
 REVOLUT_IBAN = "LT093250023819440672"
 TRUST_WALLET = "0xE426ECBa32B0281Ebe0c799512F45E2071a69415"
 
@@ -13,9 +15,9 @@ TRUST_WALLET = "0xE426ECBa32B0281Ebe0c799512F45E2071a69415"
 def health():
     return {"ok": True, "service": "CryptoKestasBot", "expects": f"/{TOKEN}"}
 
+# Priimame tiek : tiek %3A
 @app.post("/{path}")
 async def telegram_webhook(request: Request, path: str):
-    # Leidžia priimti tiek : tiek %3A formą
     normalized = urllib.parse.unquote(path)
     if normalized != TOKEN:
         return {"ok": True}
@@ -28,18 +30,26 @@ async def telegram_webhook(request: Request, path: str):
     if not chat_id:
         return {"ok": True}
 
+    # Komanda /start
     if text.startswith("/start"):
-        reply = "👋 Sveiki! Naudokite /pay, kad pamatytumėte mokėjimo informaciją."
+        reply = (
+            "👋 Sveiki! Botas veikia.\n\n"
+            "Naudokite komandą /pay, kad pamatytumėte mokėjimo informaciją."
+        )
+
+    # Komanda /pay
     elif text.startswith("/pay"):
         reply = (
             "💳 *Mokėjimo informacija:*\n\n"
             f"🏦 Revolut IBAN: `{REVOLUT_IBAN}`\n"
-            f"👛 Trust Wallet: `{TRUST_WALLET}`\n\n"
-            "_Atlikę mokėjimą, parašykite mums patvirtinimui._"
+            f"👛 Trust Wallet adresas: `{TRUST_WALLET}`\n\n"
+            "_Atlikę mokėjimą, parašykite man patvirtinimui._"
         )
+
     else:
         reply = f"Gavau: {text}"
 
+    # Siunčiame atsakymą
     requests.post(f"{API}/sendMessage", json={
         "chat_id": chat_id,
         "text": reply,
@@ -47,6 +57,7 @@ async def telegram_webhook(request: Request, path: str):
     })
 
     return {"ok": True}
+
 
 
 
