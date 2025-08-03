@@ -1,80 +1,56 @@
 from fastapi import FastAPI, Request
-import os, requests, urllib.parse
+import os, requests
 
 app = FastAPI()
 
-# --- ENV kintamieji ---
-TOKEN = os.getenv("BOT_TOKEN")  # tavo boto tokenas iš @BotFather
+# Bot token iš Railway kintamojo
+TOKEN = os.getenv("BOT_TOKEN")
 API = f"https://api.telegram.org/bot{TOKEN}"
 
-# Mokėjimo duomenys (tiesiai čia arba Railway Variables)
-REVOLUT_IBAN = os.getenv("REVOLUT_IBAN", "LT093250023819440672")
-CRYPTO_ADDRESS = os.getenv("CRYPTO_ADDRESS", "0xE426ECBa32B0281Ebe0c799512F45E2071a69415")
-
-# Pagalbinė funkcija siųsti žinutes
-def send(chat_id, text, reply_markup=None, parse_mode=None):
-    payload = {"chat_id": chat_id, "text": text}
-    if reply_markup:
-        payload["reply_markup"] = reply_markup
-    if parse_mode:
-        payload["parse_mode"] = parse_mode
-    requests.post(f"{API}/sendMessage", json=payload)
+# Mokėjimo duomenys
+REVOLUT_IBAN = "LT093250023819440672"
+TRUST_WALLET = "0xE426ECBa32B0281Ebe0c799512F45E2071a69415"
 
 @app.get("/")
 def health():
-    return {"ok": True, "service": "CryptoKestasBot", "expects": f"/{TOKEN}"}
+    return {"ok": True, "service": "CryptoKestasBot"}
 
-# Priimame POST į kelią su tokenu (tiek su : tiek su %3A)
-@app.post("/{path}")
-async def telegram_webhook(request: Request, path: str):
-    normalized = urllib.parse.unquote(path)
-    if normalized != TOKEN:
-        return {"ok": True}
-
+@app.post(f"/{TOKEN}")
+async def telegram_webhook(request: Request):
     update = await request.json()
-
-    # Inline mygtukų paspaudimai
-    if "callback_query" in update:
-        cq = update["callback_query"]
-        data = cq.get("data")
-        cid = cq["message"]["chat"]["id"]
-
-        if data == "pay_revolut":
-            send(cid, f"🏦 Revolut IBAN:\n`{REVOLUT_IBAN}`", parse_mode="Markdown")
-        elif data == "pay_crypto":
-            send(cid, f"💰 Trust Wallet adresas:\n`{CRYPTO_ADDRESS}`", parse_mode="Markdown")
-
-        requests.post(f"{API}/answerCallbackQuery", json={"callback_query_id": cq["id"]})
-        return {"ok": True}
-
-    # Vartotojo žinutės
-    message = update.get("message") or {}
-    chat_id = (message.get("chat") or {}).get("id")
-    text = (message.get("text") or "").strip().lower()
+    message = update.get("message") or update.get("edited_message") or {}
+    chat = message.get("chat") or {}
+    chat_id = chat.get("id")
+    text = (message.get("text") or "").strip()
 
     if not chat_id:
         return {"ok": True}
 
-    if text == "/start":
-        send(chat_id, "👋 Sveiki! Pasirinkite apmokėjimo būdą su /pay")
-        return {"ok": True}
+    reply = None
 
-    if text == "/pay":
-        kb = {
-            "inline_keyboard": [
-                [{"text": "🏦 Revolut (IBAN)", "callback_data": "pay_revolut"}],
-                [{"text": "💰 Trust Wallet", "callback_data": "pay_crypto"}],
-            ]
-        }
-        send(chat_id, "Pasirink apmokėjimo būdą:", reply_markup=kb)
-        return {"ok": True}
+    if text.lower().startswith("/start"):
+        reply = "👋 Sveiki! Botas veikia. Parašykite žinutę – atsakysiu."
+    elif text.lower().startswith("/pay"):
+        reply = (
+            "💳 *Mokėjimo informacija:*\n\n"
+            f"🏦 Revolut IBAN: `{REVOLUT_IBAN}`\n"
+            f"👛 Trust Wallet: `{TRUST_WALLET}`\n\n"
+            "_Atlikę mokėjimą, parašykite mums patvirtinimui._"
+        )
+    elif text:
+        reply = f"Gavau: {text}"
+    else:
+        reply = "📩 Gauta žinutė."
 
-    if text == "/help":
-        send(chat_id, "Pagalba: /start, /pay. Pasirinkite norimą apmokėjimo būdą ir atlikite pavedimą.")
-        return {"ok": True}
+    # Siunčiam atsakymą į Telegram
+    requests.post(f"{API}/sendMessage", json={
+        "chat_id": chat_id,
+        "text": reply,
+        "parse_mode": "Markdown"
+    })
 
-    send(chat_id, f"Gavau: {text}")
     return {"ok": True}
+
 
 
 
