@@ -6,9 +6,9 @@ app = FastAPI()
 # --- ENV ---
 TOKEN = os.getenv("BOT_TOKEN")
 API = f"https://api.telegram.org/bot{TOKEN}"
-PROVIDER_TOKEN = os.getenv("PROVIDER_TOKEN")      # Stripe provider token (iš BotFather)
-REVOLUT_LINK   = os.getenv("REVOLUT_LINK")        # Pvz. https://revolut.me/tavo/9.90eur (nebūtina)
-CRYPTO_ADDRESS = os.getenv("CRYPTO_ADDRESS")      # Pvz. USDT/ETH adresas (nebūtina)
+PROVIDER_TOKEN = os.getenv("PROVIDER_TOKEN")          # Stripe (nebūtina dabar)
+REVOLUT_IBAN   = os.getenv("REVOLUT_IBAN")            # LTxx... (naudosim /pay)
+CRYPTO_ADDRESS = os.getenv("CRYPTO_ADDRESS")          # 0x... (naudosim /pay)
 
 # --- helperis siuntimui ---
 def send(chat_id, text, reply_markup=None, parse_mode=None):
@@ -39,20 +39,24 @@ async def telegram_webhook(request: Request, path: str):
         cid  = cq["message"]["chat"]["id"]
 
         if data == "pay_stripe":
-            # Gali siųsti invoice čia; paprastumo dėlei nurodom /buy
-            send(cid, "Paleidžiu Stripe atsiskaitymą… Parašyk /buy")
-        elif data == "pay_revolut":
-            if REVOLUT_LINK:
-                send(cid, f"🏦 Revolut nuoroda:\n{REVOLUT_LINK}")
+            if PROVIDER_TOKEN:
+                send(cid, "Paleidžiu Stripe atsiskaitymą… parašyk /buy")
             else:
-                send(cid, "Revolut nuoroda nenustatyta. Įrašyk REVOLUT_LINK Railway → Variables.")
+                send(cid, "Stripe dar neįjungtas. Galimi: Revolut (IBAN) arba Crypto (Wallet).")
+        elif data == "pay_revolut":
+            if REVOLUT_IBAN:
+                # rodom IBAN; naudok plain text, kad vartotojas nukopijuotų
+                send(cid, f"🏦 Revolut IBAN:\n{REVOLUT_IBAN}")
+            else:
+                send(cid, "Revolut IBAN nenustatytas. Įrašyk REVOLUT_IBAN Railway → Variables.")
         elif data == "pay_crypto":
             if CRYPTO_ADDRESS:
-                send(cid, f"💰 Crypto adresas (Trust Wallet):\n`{CRYPTO_ADDRESS}`", parse_mode="Markdown")
+                # suformatuojam taip, kad patogu nukopijuoti
+                send(cid, f"💰 Crypto (Trust Wallet) adresas:\n`{CRYPTO_ADDRESS}`", parse_mode="Markdown")
             else:
                 send(cid, "Crypto adresas nenustatytas. Įrašyk CRYPTO_ADDRESS Railway → Variables.")
 
-        # privaloma atsakyti, kad nebūtų „loading“
+        # privaloma atsakyti, kad dingtu „loading“
         requests.post(f"{API}/answerCallbackQuery", json={"callback_query_id": cq["id"]})
         return {"ok": True}
 
@@ -85,16 +89,16 @@ async def telegram_webhook(request: Request, path: str):
         send(
             chat_id,
             "👋 Sveiki! Botas veikia.\n\n"
-            "🧾 Apmokėjimai: naudokite /pay arba tiesiai /buy (Stripe)."
+            "🧾 Apmokėjimai: naudokite /pay (Revolut IBAN / Crypto Wallet / Stripe)."
         )
         return {"ok": True}
 
     if text == "/pay":
         kb = {
             "inline_keyboard": [
-                [{"text": "💳 Stripe (/buy)", "callback_data": "pay_stripe"}],
-                [{"text": "🏦 Revolut",        "callback_data": "pay_revolut"}],
-                [{"text": "💰 Crypto (Wallet)","callback_data": "pay_crypto"}],
+                [{"text": "🏦 Revolut (IBAN)",  "callback_data": "pay_revolut"}],
+                [{"text": "💰 Crypto (Wallet)", "callback_data": "pay_crypto"}],
+                [{"text": "💳 Stripe (/buy)",   "callback_data": "pay_stripe"}],
             ]
         }
         send(chat_id, "Pasirink apmokėjimo būdą:", reply_markup=kb)
@@ -102,7 +106,7 @@ async def telegram_webhook(request: Request, path: str):
 
     if text == "/buy":
         if not PROVIDER_TOKEN:
-            send(chat_id, "❗ Nenurodytas PROVIDER_TOKEN. Įrašyk Railway → Variables ir redeploy.")
+            send(chat_id, "❗ Stripe neįjungtas. Galite rinktis /pay → Revolut (IBAN) ar Crypto (Wallet).")
             return {"ok": True}
 
         # Kaina centais (EUR). 990 = 9.90 €
@@ -126,8 +130,9 @@ async def telegram_webhook(request: Request, path: str):
         send(chat_id, "Pagalba: /start, /pay, /buy. Dėl klausimų – parašykite žinutę.")
         return {"ok": True}
 
-    # 4) Numatytas atsakymas (echo)
+    # 4) Numatytas atsakymas
     send(chat_id, f"Gavau: {text}")
     return {"ok": True}
+
 
 
