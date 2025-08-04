@@ -3,17 +3,20 @@ import os, requests, urllib.parse
 
 app = FastAPI()
 
-# Environment variables
+# Environment variables (nustatyti Railway → Variables)
 TOKEN = os.getenv("BOT_TOKEN")
-REVOLUT_IBAN = os.getenv("REVOLUT_IBAN", "LT093250023819440672")
-TRUST_WALLET = os.getenv("TRUST_WALLET", "0xE426ECBa32B0281Ebe0c799512F45E2071a69415")
-RAILWAY_URL = "https://crypto-signals-bot-production.up.railway.app"
-
 API = f"https://api.telegram.org/bot{TOKEN}"
 
-# Auto-set webhook at startup
+REVOLUT_IBAN = "LT093250023819440672"
+TRUST_WALLET = "0xE426ECBa32B0281Ebe0c799512F45E2071a69415"
+BINANCE_LINK = "https://www.binance.com/activity/referral-entry/CPA?ref=CPA_00VRLU21DK"
+KRIPTOMAT_LINK = "https://app.kriptomat.io/ref/join?referral=ghffvpum"
+SUPPORT_CONTACT = "@CryptoKestas"
+
+# Automatinis webhook nustatymas starto metu
 def set_webhook():
-    webhook_url = f"{RAILWAY_URL}/{TOKEN}"
+    railway_url = "https://crypto-signals-bot-production.up.railway.app"
+    webhook_url = f"{railway_url}/{TOKEN}"
     r = requests.get(f"{API}/setWebhook?url={webhook_url}")
     print("Webhook set response:", r.text)
 
@@ -44,9 +47,8 @@ async def telegram_webhook(request: Request, path: str):
     if not chat_id:
         return {"ok": True}
 
-    # Commands
     if text == "/start":
-        reply = (
+        send_message(chat_id,
             "👋 Sveiki! Botas veikia.\n\n"
             "📌 Komandos:\n"
             "/help – Pagalba\n"
@@ -55,54 +57,44 @@ async def telegram_webhook(request: Request, path: str):
             "/affiliate – Partnerių nuorodos\n"
             "/support – Kontaktas"
         )
-        send_message(chat_id, reply)
-        return {"ok": True}
 
-    if text == "/help":
-        reply = (
+    elif text == "/help":
+        send_message(chat_id,
             "ℹ️ *Pagalba*\n\n"
-            "💳 /pay – Gauti mokėjimo informaciją\n"
-            "📊 /signalai – Pavyzdiniai prekybos signalai\n"
+            "💳 /pay – Mokėjimo informacija\n"
+            "📊 /signalai – Pavyzdiniai signalai\n"
             "🌐 /affiliate – Partnerių nuorodos\n"
-            "📩 /support – Kontaktinė informacija"
+            "📩 /support – Kontaktas"
         )
-        send_message(chat_id, reply)
-        return {"ok": True}
 
-    if text == "/pay":
-        reply = (
+    elif text == "/pay":
+        send_message(chat_id,
             f"💳 *Mokėjimo informacija:*\n"
             f"🏦 Revolut IBAN: `{REVOLUT_IBAN}`\n"
             f"👛 Trust Wallet: `{TRUST_WALLET}`\n\n"
             "_Atlikę mokėjimą, parašykite man patvirtinimui._"
         )
-        send_message(chat_id, reply)
-        return {"ok": True}
 
-    if text == "/signalai":
-        reply = (
+    elif text == "/signalai":
+        send_message(chat_id,
             "📊 *Pavyzdiniai signalai:*\n"
             "BTC/USDT – Pirkimas @ 30000 🎯\n"
             "ETH/USDT – Pirkimas @ 2000 🎯"
         )
-        send_message(chat_id, reply)
-        return {"ok": True}
 
-    if text == "/affiliate":
-        reply = (
-            "🌐 *Partnerių nuorodos:*\n"
-            "🔗 Binance: https://www.binance.com/activity/referral-entry/CPA?ref=CPA_00VRLU21DK\n"
-            "🔗 Kriptomat: https://app.kriptomat.io/ref/join?referral=ghffvpum"
+    elif text == "/affiliate":
+        send_message(chat_id,
+            f"🌐 *Partnerių nuorodos:*\n"
+            f"🔗 Binance: {BINANCE_LINK}\n"
+            f"🔗 Kriptomat: {KRIPTOMAT_LINK}"
         )
-        send_message(chat_id, reply)
-        return {"ok": True}
 
-    if text == "/support":
-        reply = "📩 Susisiekite su manimi: @CryptoKestas"
-        send_message(chat_id, reply)
-        return {"ok": True}
+    elif text == "/support":
+        send_message(chat_id, f"📩 Susisiekite su manimi: {SUPPORT_CONTACT}")
 
-    # Default
-    send_message(chat_id, f"Gavau: {text}")
+    else:
+        send_message(chat_id, f"Gavau: {text}")
+
     return {"ok": True}
+
 
