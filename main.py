@@ -24,16 +24,11 @@ async def telegram_webhook(request: Request):
             reply = "👋 Sveiki! Botas veikia. Parašykite žinutę – atsakysiu."
         elif text.lower() == "/pay":
             reply = (
-                "📄 *Mokėjimo informacija:*
-
-"
-                "🏦 Revolut IBAN: `LT093250023819440672`
-"
-                "👛 Trust Wallet adresas: `0xE426ECBa32B0281Ebe0c799512F45E2071a69415`
-
-"
-                "Atlikę mokėjimą, parašykite man patvirtinimui."
-            )
+    "📜 *Mokėjimo informacija:*\n"
+    "🏦 Revolut IBAN: LT093250023819440672\n"
+    "👛 Trust Wallet adresas: 0xE426ECBa32B0281Ebe0c799512F45E2071a69415\n\n"
+    "_Atlikę mokėjimą, parašykite man patvirtinimui._"
+)
             requests.post(f"{API}/sendMessage", json={
                 "chat_id": chat_id,
                 "text": reply,
