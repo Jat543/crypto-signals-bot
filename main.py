@@ -38,7 +38,7 @@ async def webhook(request: Request):
         reply = "👋 Sveiki! Norėdami matyti signalus, naudokite komandą /pay ir atlikite apmokėjimą."
     elif text.lower() == "/pay":
         reply = (
-            "💳 Apmokėjimo informacija:
+            print("💳 Apmokėjimo informacija"):
 
 "
             "🔹 Revolut IBAN: LT093250023819440672
