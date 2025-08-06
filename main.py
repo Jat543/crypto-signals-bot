@@ -38,19 +38,20 @@ async def webhook(request: Request):
         reply = "👋 Sveiki! Norėdami matyti signalus, naudokite komandą /pay ir atlikite apmokėjimą."
     elif text.lower() == "/pay":
         reply = (
-            "📖 Apmokėjimo informacija:\n\n"
-            "🏦 Revolut IBAN: LT093250023819440672\n"
-            "👛 Trust Wallet adresas: 0xE426ECBa32B0281Ebe0c799512F45E2071a69415\n\n"
-            "🧾 Po apmokėjimo parašykite /patvirtinti <user_id> (tik adminui)"
+            "💳 Apmokėjimo informacija:\n\n"
+            "🔸 Revolut IBAN: LT093250023819440672\n"
+            "🔹 Trust Wallet adresas: 0xE426ECBa32B0281Ebe0c799512F45E2071a69415\n\n"
+            "🧾 Po apmokėjimo parašykite komandą:\n"
+            "/patvirtinti <vartotojo_ID> (tik adminas gali patvirtinti)"
         )
     elif text.lower() == "/signalai":
         if chat_id in users:
             reply = "📊 Signalai:\nBTC/USDT: LONG\nETH/USDT: SHORT"
         else:
-            reply = "⛔ Prieiga tik apmokėjusiems. Naudokite /pay."
+            reply = "⛔ Prieiga tik apmokėjusiems. Pirmiausia naudokite /pay."
     elif text.lower().startswith("/patvirtinti"):
         if str(chat_id) != ADMIN_ID:
-            reply = "⛔ Tik administratorius gali patvirtinti."
+            reply = "⛔ Tik administratorius gali patvirtinti vartotojus."
         else:
             parts = text.split()
             if len(parts) == 2:
@@ -65,9 +66,9 @@ async def webhook(request: Request):
                 except:
                     reply = "⚠️ Neteisingas ID formatas."
             else:
-                reply = "⚠️ Naudok: /patvirtinti <user_id>"
+                reply = "⚠️ Naudok: /patvirtinti <vartotojo_ID>"
     else:
-        reply = "❓ Nežinoma komanda – naudok /start"
+        reply = "❓ Nežinoma komanda. Naudok /start"
 
     requests.post(f"{API_URL}/sendMessage", json={"chat_id": chat_id, "text": reply})
     return {"ok": True}
