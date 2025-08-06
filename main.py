@@ -1,53 +1,84 @@
 import os
-import stripe
-from flask import Flask, request, jsonify
-from telegram import Bot, Update
-from telegram.ext import Dispatcher, CommandHandler, MessageHandler, filters, CallbackContext
+import json
+from fastapi import FastAPI, Request
+import requests
 
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
-YOUR_DOMAIN = os.getenv("STRIPE_DOMAIN", "https://your-domain.com")
+app = FastAPI()
 
-bot = Bot(token=TOKEN)
-app = Flask(__name__)
-stripe.api_key = STRIPE_SECRET_KEY
+TOKEN = os.getenv("BOT_TOKEN")
+API_URL = f"https://api.telegram.org/bot{TOKEN}"
+ADMIN_ID = os.getenv("ADMIN_ID")
 
-dispatcher = Dispatcher(bot=bot, update_queue=None, use_context=True)
+USERS_FILE = "paid_users.json"
 
-def start(update: Update, context: CallbackContext):
-    update.message.reply_text("Sveiki! Parašykite /buy norėdami įsigyti prieigą prie signalų.")
+def load_paid_users():
+    try:
+        with open(USERS_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return []
 
-def buy(update: Update, context: CallbackContext):
-    session = stripe.checkout.Session.create(
-        payment_method_types=['card'],
-        line_items=[{
-            'price_data': {
-                'currency': 'eur',
-                'product_data': {
-                    'name': 'Crypto Signalų Prenumerata',
-                },
-                'unit_amount': 500,  # 5.00 EUR
-            },
-            'quantity': 1,
-        }],
-        mode='payment',
-        success_url=YOUR_DOMAIN + '/success?session_id={CHECKOUT_SESSION_ID}',
-        cancel_url=YOUR_DOMAIN + '/cancel',
-    )
-    update.message.reply_text(f"Pirkimo nuoroda: {session.url}")
+def save_paid_users(users):
+    with open(USERS_FILE, "w") as f:
+        json.dump(users, f)
 
-dispatcher.add_handler(CommandHandler("start", start))
-dispatcher.add_handler(CommandHandler("buy", buy))
+@app.post(f"/{TOKEN}")
+async def webhook(request: Request):
+    data = await request.json()
+    message = data.get("message", {})
+    chat_id = message.get("chat", {}).get("id")
+    text = message.get("text", "")
 
-@app.route(f'/{TOKEN}', methods=['POST'])
-def webhook():
-    update = Update.de_json(request.get_json(force=True), bot)
-    dispatcher.process_update(update)
-    return 'OK'
+    if not chat_id or not text:
+        return {"ok": True}
 
-@app.route('/')
-def index():
-    return "Botas veikia!"
+    users = load_paid_users()
 
-if __name__ == '__main__':
-    app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    if text.lower() == "/start":
+        reply = "👋 Sveiki! Norėdami matyti signalus, naudokite komandą /pay ir atlikite apmokėjimą."
+    elif text.lower() == "/pay":
+        reply = (
+            "💳 Apmokėjimo informacija:
+
+"
+            "🔹 Revolut IBAN: LT093250023819440672
+"
+            "🔹 Trust Wallet: 0xE426ECBa32B0281Ebe0c799512F45E2071a69415
+
+"
+            "🧾 Po apmokėjimo parašykite /patvirtinti <user_id> (tai daro tik adminas)"
+        )
+    elif text.lower() == "/signalai":
+        if chat_id in users:
+            reply = "📊 Signalai:
+BTC/USDT: LONG
+ETH/USDT: SHORT"
+        else:
+            reply = "⛔ Prieiga prie signalų tik apmokėjusiems. Naudokite /pay."
+    elif text.lower().startswith("/patvirtinti"):
+        if str(chat_id) != ADMIN_ID:
+            reply = "⛔ Tik administratorius gali patvirtinti vartotojus."
+        else:
+            parts = text.split()
+            if len(parts) == 2:
+                try:
+                    user_to_add = int(parts[1])
+                    if user_to_add not in users:
+                        users.append(user_to_add)
+                        save_paid_users(users)
+                        reply = f"✅ Vartotojas {user_to_add} patvirtintas."
+                    else:
+                        reply = "👤 Vartotojas jau patvirtintas."
+                except:
+                    reply = "⚠️ Neteisingas ID formatas."
+            else:
+                reply = "⚠️ Naudojimas: /patvirtinti <user_id>"
+    else:
+        reply = "❓ Neatpažinta komanda. Naudokite /start"
+
+    requests.post(f"{API_URL}/sendMessage", json={"chat_id": chat_id, "text": reply})
+    return {"ok": True}
+
+@app.get("/")
+def root():
+    return {"status": "Botas veikia"}
